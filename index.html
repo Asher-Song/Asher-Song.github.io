@@ -71,6 +71,102 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-关于智能循迹小车的一些建议" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/10/18/%E5%85%B3%E4%BA%8E%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6%E7%9A%84%E4%B8%80%E4%BA%9B%E5%BB%BA%E8%AE%AE/" class="article-date">
+  <time class="dt-published" datetime="2026-10-18T08:30:54.000Z" itemprop="datePublished">2026-10-18</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/10/18/%E5%85%B3%E4%BA%8E%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6%E7%9A%84%E4%B8%80%E4%BA%9B%E5%BB%BA%E8%AE%AE/">关于智能循迹小车的一些建议</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一、硬件<br>  首先要说的就是硬件的问题了，因为硬件出错大部分情况下比程序出错难改也难排查。我的小车是四轮，两个红外的，有一样的可以参考一下，毕竟我也是新手，踩过不少坑才让我的小车成功跑到26秒。<br>  1、两个红外的间距问题。这个是真的需要根据你的场地仔细调整，因为这会影响它的转弯灵敏度，调好了也可以防抖。如果小车跑起来很抖，可以试着把距离调大一点。调好之后就不要再轻易的改动了，因为你一动，小车可能就又出问题了，包括但不限于转弯不灵敏，抖得很厉害等等，又要花时间去调，别问我怎么知道的。<br>  2.焊接技巧。博主可谓是真的零基础学焊接，焊接的时候一定要先把电烙铁放到要焊接的地方之后再拿锡丝靠近，这样才会容易焊，也焊的更好。<br>二、程序<br>  1、程序的话，尽量自己写，实在不会了就在网上找一些大神的程序对照自己的硬件改一下参数或让AI帮你写，但是记住要找聪明一点的AI，豆包啥的就不用想了，它写不好的，而且会写的很招笑，别问我怎么知道的。<br>  2、再没啥说的了，贴一段我的代码供大家参考。<br>#include &lt;reg52.h&gt;<br>#define IR_BLACK        1<br>#define PWM_PERIOD      50<br>#define SPD_RUN_L       46<br>#define SPD_RUN_R       46<br>#define SPD_TURN_OUT    50<br>#define SPD_TURN_IN     38<br>#define TURN_IN_REV     1<br>#define TURN_MS         2<br>#define RAMP_ON         1<br>#define RAMP_TICK       2</p>
+<p>sbit IR_L  &#x3D; P2^1;<br>sbit IR_R  &#x3D; P2^0;<br>sbit ENA_L &#x3D; P1^0;<br>sbit IN1_L &#x3D; P1^1;<br>sbit IN2_L &#x3D; P1^2;<br>sbit IN3_R &#x3D; P1^3;<br>sbit IN4_R &#x3D; P1^4;<br>sbit ENB_R &#x3D; P1^5;</p>
+<p>static unsigned char duty_L &#x3D; 0, duty_R &#x3D; 0;<br>static unsigned char targ_L &#x3D; 0, targ_R &#x3D; 0;<br>static unsigned char pwm_cnt  &#x3D; 0;<br>static unsigned char ramp_cnt &#x3D; 0;<br>static unsigned int  sys_ms   &#x3D; 0;<br>static unsigned char ms_cnt   &#x3D; 0;</p>
+<p>static unsigned char turn_dir   &#x3D; 0;<br>static unsigned int  turn_start &#x3D; 0;<br>static unsigned char last_sensor &#x3D; 0;</p>
+<p>void Delay_ms(unsigned int ms)<br>{<br>    unsigned int i;<br>    unsigned char j;<br>    for (i &#x3D; 0; i &lt; ms; i++)<br>        for (j &#x3D; 0; j &lt; 200; j++);<br>}</p>
+<p>void Timer0_Init(void)<br>{<br>    TMOD &amp;&#x3D; 0xF0;<br>    TMOD |&#x3D; 0x02;<br>    TH0 &#x3D; 0x9C;<br>    TL0 &#x3D; 0x9C;<br>    ET0 &#x3D; 1;<br>    EA  &#x3D; 1;<br>    TR0 &#x3D; 1;<br>}<br>void Timer0_ISR(void) interrupt 1<br>{<br>    if (++pwm_cnt &gt;&#x3D; PWM_PERIOD) pwm_cnt &#x3D; 0;<br>    ENA_L &#x3D; (pwm_cnt &lt; duty_L) ? 1 : 0;<br>    ENB_R &#x3D; (pwm_cnt &lt; duty_R) ? 1 : 0;</p>
+<pre><code>if (++ms_cnt &gt;= 10) {
+    ms_cnt = 0;
+    sys_ms++;
+}
+</code></pre>
+<p>#if RAMP_ON<br>    if (++ramp_cnt &gt;&#x3D; RAMP_TICK) {<br>        ramp_cnt &#x3D; 0;<br>        if (duty_L &lt; targ_L)      duty_L++;<br>        else if (duty_L &gt; targ_L) duty_L–;<br>        if (duty_R &lt; targ_R)      duty_R++;<br>        else if (duty_R &gt; targ_R) duty_R–;<br>    }<br>#endif<br>}</p>
+<p>static void Apply_Speed(void)<br>{<br>#if !RAMP_ON<br>    duty_L &#x3D; targ_L;<br>    duty_R &#x3D; targ_R;<br>#endif<br>}</p>
+<p>void Left_Motor(unsigned char dir, unsigned char speed)<br>{<br>    if (dir) { IN1_L &#x3D; 1; IN2_L &#x3D; 0; }<br>    else     { IN1_L &#x3D; 0; IN2_L &#x3D; 1; }<br>    if (speed &gt; PWM_PERIOD) speed &#x3D; PWM_PERIOD;<br>    targ_L &#x3D; speed;<br>    Apply_Speed();<br>}</p>
+<p>void Right_Motor(unsigned char dir, unsigned char speed)<br>{<br>    if (dir) { IN3_R &#x3D; 1; IN4_R &#x3D; 0; }<br>    else     { IN3_R &#x3D; 0; IN4_R &#x3D; 1; }<br>    if (speed &gt; PWM_PERIOD) speed &#x3D; PWM_PERIOD;<br>    targ_R &#x3D; speed;<br>    Apply_Speed();<br>}</p>
+<p>void Car_Stop(void)<br>{<br>    targ_L &#x3D; targ_R &#x3D; 0;<br>    duty_L &#x3D; duty_R &#x3D; 0;<br>    IN1_L &#x3D; 0; IN2_L &#x3D; 0;<br>    IN3_R &#x3D; 0; IN4_R &#x3D; 0;<br>    ENA_L &#x3D; 0; ENB_R &#x3D; 0;<br>}</p>
+<p>void Go_Straight(void)<br>{<br>    Left_Motor(1, SPD_RUN_L);<br>    Right_Motor(1, SPD_RUN_R);<br>}</p>
+<p>void Turn_Left(void)<br>{<br>#if TURN_IN_REV<br>    Left_Motor(0, SPD_TURN_IN);<br>#else<br>    Left_Motor(1, SPD_TURN_IN);<br>#endif<br>    Right_Motor(1, SPD_TURN_OUT);<br>}</p>
+<p>void Turn_Right(void)<br>{<br>    Left_Motor(1, SPD_TURN_OUT);<br>#if TURN_IN_REV<br>    Right_Motor(0, SPD_TURN_IN);<br>#else<br>    Right_Motor(1, SPD_TURN_IN);<br>#endif<br>}</p>
+<p>unsigned char Read_IR(void)<br>{<br>    unsigned char v &#x3D; 0;<br>    if (IR_L &#x3D;&#x3D; IR_BLACK) v |&#x3D; 0x02;<br>    if (IR_R &#x3D;&#x3D; IR_BLACK) v |&#x3D; 0x01;<br>    return v;<br>}</p>
+<p>void main(void)<br>{<br>    unsigned char s1, s2, state;<br>    unsigned int  now;<br>    IR_L &#x3D; 1;<br>    IR_R &#x3D; 1;<br>    Car_Stop();<br>    Timer0_Init();<br>    Delay_ms(500);<br>    while (1)<br>    {<br>        s1 &#x3D; Read_IR();<br>        Delay_ms(1);<br>        s2 &#x3D; Read_IR();<br>        if (s1 &#x3D;&#x3D; s2) { state &#x3D; s1; last_sensor &#x3D; s1; }<br>        else          { state &#x3D; last_sensor; }</p>
+<pre><code>    EA = 0; now = sys_ms; EA = 1;
+    if (state == 0x03)
+    {
+        Car_Stop();
+        turn_dir = 0;
+    }
+    else if (state == 0x02)
+    {
+        turn_dir   = 2;
+        turn_start = now;
+        Turn_Left();
+    }
+    else if (state == 0x01)
+    {
+        turn_dir   = 1;
+        turn_start = now;
+        Turn_Right();
+    }
+    else
+    {
+        if (turn_dir != 0 &amp;&amp; (unsigned int)(now - turn_start) &lt; TURN_MS)
+        {
+            if (turn_dir == 2) Turn_Left();
+            else               Turn_Right();
+        }
+        else
+        {
+            turn_dir = 0;
+            Go_Straight();
+        }
+    }
+    Delay_ms(1);
+}
+</code></pre>
+<p>}</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/10/18/%E5%85%B3%E4%BA%8E%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6%E7%9A%84%E4%B8%80%E4%BA%9B%E5%BB%BA%E8%AE%AE/" data-id="cuidQhqrDYWbrAC6pZ7NiXbQv" data-title="关于智能循迹小车的一些建议" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6/" rel="tag">智能循迹小车</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-第一篇博客" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/10/18/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/" class="article-date">
@@ -98,7 +194,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/10/18/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/" data-id="cuidHMNUSrmEq10y7J2xB7X0g" data-title="第一篇博客" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/10/18/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/" data-id="cuidlvVkfA2bYMhfH8VCyAq5E" data-title="第一篇博客" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -149,7 +245,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/10/18/hello-world/" data-id="cuid-5vitZVrPi9vjJKefcXTw" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/10/18/hello-world/" data-id="cuidzQNFvxO7nhGSKmDSlFbec" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -171,9 +267,23 @@
 
   
     
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6/" rel="tag">智能循迹小车</a></li></ul>
+    </div>
+  </div>
+
 
   
     
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6/" style="font-size: 10px;">智能循迹小车</a>
+    </div>
+  </div>
+
   
     
   <div class="widget-wrap">
@@ -190,6 +300,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2026/10/18/%E5%85%B3%E4%BA%8E%E6%99%BA%E8%83%BD%E5%BE%AA%E8%BF%B9%E5%B0%8F%E8%BD%A6%E7%9A%84%E4%B8%80%E4%BA%9B%E5%BB%BA%E8%AE%AE/">关于智能循迹小车的一些建议</a>
+          </li>
         
           <li>
             <a href="/2026/10/18/%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/">第一篇博客</a>
